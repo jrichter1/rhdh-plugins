@@ -108,6 +108,14 @@ jobs:
       - name: test changed packages
         run: yarn backstage-cli repo test --coverage --maxWorkers=3
 
+      - name: install playwright
+        if: ${{ hashFiles('playwright.config.ts') != '' }}
+        run: yarn playwright install --with-deps chromium
+
+      - name: run playwright tests
+        if: ${{ hashFiles('playwright.config.ts') != '' }}
+        run: yarn playwright test
+
       - name: ensure clean working directory
         run: |
           if files=$(git ls-files --exclude-standard --others --modified) && [[ -z "$files" ]]; then
