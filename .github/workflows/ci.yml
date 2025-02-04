@@ -110,7 +110,7 @@ jobs:
 
       - name: install playwright
         if: ${{ hashFiles(format('workspaces/{0}/playwright.config.ts', matrix.workspace)) != '' }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium chrome
 
       - name: run playwright tests
         if: ${{ hashFiles(format('workspaces/{0}/playwright.config.ts', matrix.workspace)) != '' }}
