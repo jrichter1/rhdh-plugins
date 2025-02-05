@@ -1,77 +1,31 @@
+/*
+ * Copyright Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { test, expect } from '@playwright/test';
-
-const modelBaseUrl = '*/**/api/lightspeed';
-const createdAt = Date.now();
-
-const models = [
-  {
-    id: 'mock-model-1',
-    object: 'model',
-    created: Math.floor(createdAt / 1000),
-    owned_by: 'library',
-  },
-  {
-    id: 'mock-model-2',
-    object: 'model',
-    created: Math.floor(createdAt / 1000),
-    owned_by: 'library',
-  },
-];
-
-const defaultConversation = {
-  conversation_id: 'user:development/guest+Av8Fax73D4XPx5Ls',
-};
-
-const conversations = [
-  {
-    conversation_id: 'user:development/guest+Av8Fax73D4XPx5Ls',
-    summary: 'Red Hat Developer Hub Assistance',
-    lastMessageTimestamp: createdAt,
-  },
-];
-
-const contents = [
-  {
-    lc: 1,
-    type: 'constructor',
-    id: ['langchain_core', 'messages', 'HumanMessage'],
-    kwargs: {
-      content: 'hello',
-      response_metadata: {
-        created_at: createdAt,
-      },
-      additional_kwargs: {},
-    },
-  },
-  {
-    lc: 1,
-    type: 'constructor',
-    id: ['langchain_core', 'messages', 'AIMessage'],
-    kwargs: {
-      content: 'Fuck off',
-      response_metadata: {
-        created_at: createdAt,
-        model: models[1].id,
-      },
-      tool_calls: [],
-      invalid_tool_calls: [],
-      additional_kwargs: {},
-    },
-  },
-];
-
-function generateQueryResponse(conversationId: string) {
-  const titles = ['looser', 'bitch', 'shithead', 'dumbass'];
-  const response = `Fuck off , ${titles[Math.round(Math.random() * (titles.length - 1))]}`;
-  let body = '';
-
-  for (const token of response.split(' ')) {
-    body += `{"conversation_id":"${conversationId}","response":{"lc":1,"type":"constructor","id":["langchain_core","messages","AIMessageChunk"],"kwargs":{"content":" ${token}","tool_call_chunks":[],"additional_kwargs":{},"id":"chatcmpl-890","tool_calls":[],"invalid_tool_calls":[],"response_metadata":{"prompt":0,"completion":0,"created_at":1736332476031,"model":"${models[1].id}"}}}}`;
-  }
-  body += `{"conversation_id":"${conversationId}","response":{"lc":1,"type":"constructor","id":["langchain_core","messages","AIMessageChunk"],"kwargs":{"content":"","tool_call_chunks":[],"additional_kwargs":{},"id":"chatcmpl-890","tool_calls":[],"invalid_tool_calls":[],"response_metadata":{"prompt":0,"completion":0,"finish_reason":"stop","system_fingerprint":"fp_ollama","created_at":1736332476031,"model":"${models[1].id}"}}}}`;
-
-  return body;
-}
+import {
+  modelBaseUrl,
+  models,
+  defaultConversation,
+  conversations,
+  contents,
+  generateQueryResponse,
+  botResponse,
+  moreConversations,
+} from './fixtures/responses';
+import { openLightspeed, sendMessage } from './utils/testHelper';
 
 test.beforeEach(async ({ page }) => {
   await page.route(`${modelBaseUrl}/v1/models`, async route => {
@@ -99,40 +53,102 @@ test.beforeEach(async ({ page }) => {
     const body = generateQueryResponse(payload.conversation_id);
     await route.fulfill({ body });
   });
-});
 
-test('has title', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Enter' }).click();
+  await openLightspeed(page);
+});
 
-  const navLink = page.locator(`nav a:has-text("lightspeed")`).first();
-  await navLink.waitFor({ state: 'visible' });
-  await navLink.click();
+test('Lightspeed is available', async ({ page }) => {
+  expect(page.url()).toContain('/lightspeed');
+  expect(await page.title()).toContain('RHDH Lightspeed');
 
+  const headings = page.getByRole('heading');
+  await expect(headings.first()).toContainText('Developer Hub Lightspeed');
+  await expect(headings.last()).toContainText('How can I help');
+});
+
+test('Models are available', async ({ page }) => {
   const model = models[1].id;
   const dropdown = page.locator('button[aria-label="Chatbot selector"]');
-  await dropdown.waitFor({ state: 'visible' });
+  await expect(dropdown).toHaveText(models[0].id);
+
   await dropdown.click();
   await page.getByText(model).click();
-  expect(dropdown).toHaveText(model);
+  await expect(dropdown).toHaveText(model);
+});
 
-  await page.route(`${modelBaseUrl}/conversations`, async route => {
-    if (route.request().method() === 'GET') {
-      const json = conversations;
+test.describe('Conversation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(`${modelBaseUrl}/conversations`, async route => {
+      if (route.request().method() === 'GET') {
+        const json = conversations;
+        await route.fulfill({ json });
+      } else {
+        await route.fulfill();
+      }
+    });
+    await page.route(`${modelBaseUrl}/conversations/user*`, async route => {
+      const json = contents;
       await route.fulfill({ json });
-    } else {
-      await route.fulfill();
-    }
-  });
-  await page.route(`${modelBaseUrl}/conversations/user*`, async route => {
-    const json = contents;
-    await route.fulfill({ json });
+    });
   });
 
-  const inputLocator = page.getByRole('textbox').first();
-  await inputLocator.waitFor({ state: 'visible' });
-  await inputLocator.fill('fuck you too');
-  await page.locator('button[aria-label="Send button"]').click();
+  test('Bot responds', async ({ page }) => {
+    const inputText = 'Please respond';
+    await sendMessage(inputText, page);
 
-  await page.waitForTimeout(10000);
+    const userMessage = page.locator('.pf-chatbot__message--user');
+    const botMessage = page.locator('.pf-chatbot__message--bot');
+
+    await expect(userMessage).toBeVisible();
+    await expect(userMessage).toContainText(inputText);
+    await expect(botMessage).toBeVisible();
+    await expect(botMessage).toContainText(botResponse);
+  });
+
+  test('Conversation is created and shown in side panel', async ({ page }) => {
+    await sendMessage('test', page);
+
+    const sidePanel = page.locator('.pf-v6-c-drawer__panel');
+    await expect(sidePanel).toBeVisible();
+
+    const newButton = sidePanel.getByRole('button', { name: 'new chat' });
+    await expect(newButton).toBeEnabled();
+
+    const conversation = sidePanel.locator('li.pf-chatbot__menu-item--active');
+    await expect(conversation).toBeVisible();
+  });
+
+  test('Filter and switch conversations', async ({ page }) => {
+    await page.route(`${modelBaseUrl}/conversations`, async route => {
+      if (route.request().method() === 'GET') {
+        const json = moreConversations;
+        await route.fulfill({ json });
+      } else {
+        await route.fulfill();
+      }
+    });
+    await sendMessage('test', page);
+    const sidePanel = page.locator('.pf-v6-c-drawer__panel');
+
+    const currentChat = sidePanel.locator('li.pf-chatbot__menu-item--active');
+    await expect(currentChat).toHaveText(moreConversations[0].summary);
+
+    const chats = sidePanel.locator('li.pf-chatbot__menu-item');
+    await expect(chats).toHaveCount(2);
+
+    const searchBox = sidePanel.getByPlaceholder('Search...');
+    await searchBox.fill('new');
+    await expect(chats).toHaveCount(1);
+    await expect(chats).toHaveText(moreConversations[1].summary);
+
+    await chats.click();
+
+    const userMessage = page.locator('.pf-chatbot__message--user');
+    const botMessage = page.locator('.pf-chatbot__message--bot');
+
+    await expect(userMessage).toContainText(contents[0].kwargs.content);
+    await expect(botMessage).toContainText(contents[1].kwargs.content);
+  });
 });
