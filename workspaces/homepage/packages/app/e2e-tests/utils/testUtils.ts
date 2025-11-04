@@ -16,53 +16,6 @@
 
 import { Page, expect } from '@playwright/test';
 
-export const LANGUAGE_SHORTCUTS = {
-  en: 'English',
-  fr: 'Français',
-  it: 'Italiano',
-  de: 'Deutsch',
-  es: 'Español',
-} as const;
-
-export const SUPPORTED_LANGUAGES = Object.values(
-  LANGUAGE_SHORTCUTS,
-) as readonly string[];
-
-export type SupportedLanguage =
-  (typeof LANGUAGE_SHORTCUTS)[keyof typeof LANGUAGE_SHORTCUTS];
-
-export function getTestLanguage(): SupportedLanguage {
-  const languageInput = (process.env.TEST_LANGUAGE || 'en').toLowerCase();
-
-  if (languageInput in LANGUAGE_SHORTCUTS) {
-    const language =
-      LANGUAGE_SHORTCUTS[languageInput as keyof typeof LANGUAGE_SHORTCUTS];
-    // eslint-disable-next-line no-console
-    console.log(
-      `[Language Config] Using language: "${language}" (from shortcut: "${languageInput}")`,
-    );
-    return language;
-  }
-
-  const matchedLanguage = SUPPORTED_LANGUAGES.find(
-    lang => lang.toLowerCase() === languageInput,
-  );
-  if (matchedLanguage) {
-    // eslint-disable-next-line no-console
-    console.log(`[Language Config] Using language: "${matchedLanguage}"`);
-    return matchedLanguage as SupportedLanguage;
-  }
-
-  // eslint-disable-next-line no-console
-  console.warn(
-    `[Language Config] Warning: Language "${process.env.TEST_LANGUAGE}" is not supported. ` +
-      `Supported shortcuts: ${Object.keys(LANGUAGE_SHORTCUTS).join(', ')}. ` +
-      `Supported full names: ${SUPPORTED_LANGUAGES.join(', ')}. ` +
-      `Defaulting to "English".`,
-  );
-  return 'English';
-}
-
 export class TestUtils {
   private page: Page;
 

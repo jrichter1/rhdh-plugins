@@ -15,23 +15,29 @@
  */
 
 import { test, expect, BrowserContext, Page } from '@playwright/test';
-import { TestUtils, getTestLanguage } from './utils/testUtils.js';
-import { getHomepageTranslations } from './utils/translations.js';
+import { TestUtils } from './utils/testUtils.js';
+import {
+  HomepageMessages,
+  evaluateMessage,
+  getTranslations,
+} from './utils/translations.js';
 
 test.describe('Homepage Card Individual Tests', () => {
   let testUtils: TestUtils;
   let sharedPage: Page;
   let sharedContext: BrowserContext;
-  let translations: ReturnType<typeof getHomepageTranslations>;
+  let translations: HomepageMessages;
 
   test.beforeAll(async ({ browser }) => {
     sharedContext = await browser.newContext();
     sharedPage = await sharedContext.newPage();
     testUtils = new TestUtils(sharedPage);
+    const currentLocale = await sharedPage.evaluate(
+      () => window.navigator.language,
+    );
     await testUtils.loginAsGuest();
-    const language = getTestLanguage();
-    await testUtils.switchToLocale(language);
-    translations = getHomepageTranslations();
+    await testUtils.switchToLocale(currentLocale);
+    translations = getTranslations(currentLocale);
   });
 
   test.afterAll(async () => {
@@ -136,7 +142,7 @@ test.describe('Homepage Card Individual Tests', () => {
 
     await testUtils.verifyLinkInCard(
       translations.entities.title,
-      translations.entities.viewAll(4),
+      evaluateMessage(translations.entities.viewAll, '4'),
     );
   });
 

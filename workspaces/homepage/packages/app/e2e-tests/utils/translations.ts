@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { getTestLanguage, LANGUAGE_SHORTCUTS } from './testUtils.js';
 // These translation files are not exported by the package, so relative imports are necessary for e2e tests
 /* eslint-disable @backstage/no-relative-monorepo-imports */
 import { homepageMessages } from '../../../../plugins/dynamic-home-page/src/translations/ref.js';
@@ -24,110 +23,44 @@ import homepageTranslationEs from '../../../../plugins/dynamic-home-page/src/tra
 import homepageTranslationIt from '../../../../plugins/dynamic-home-page/src/translations/it.js';
 /* eslint-enable @backstage/no-relative-monorepo-imports */
 
-export type HomepageTexts = {
-  onboarding: {
-    greeting: {
-      goodMorning: string;
-      goodAfternoon: string;
-      goodEvening: string;
-    };
-    getStarted: { title: string; description: string; buttonText: string };
-    explore: { title: string; description: string; buttonText: string };
-    learn: { title: string; description: string; buttonText: string };
-  };
-  quickAccess: {
-    title: string;
-    fetchError: string;
-    error: string;
-  };
-  entities: {
-    title: string;
-    description: string;
-    viewAll: (count: number) => string;
-  };
-  templates: {
-    title: string;
-    empty: string;
-    emptyDescription: string;
-    register: string;
-  };
-};
+export type HomepageMessages = typeof homepageMessages;
 
-function getNestedValue(obj: any, path: string): string {
-  return path.split('.').reduce((current, key) => current?.[key], obj) || '';
+function transform(messages: typeof homepageTranslationDe.messages) {
+  const result = Object.keys(messages).reduce((res, key) => {
+    const path = key.split('.');
+    const lastIndex = path.length - 1;
+    path.reduce((acc, currentPath, i) => {
+      acc[currentPath] =
+        lastIndex === i ? messages[key] : acc[currentPath] || {};
+      return acc[currentPath];
+    }, res);
+    return res;
+  }, {});
+
+  return result as HomepageMessages;
 }
 
-function transformTranslations(
-  messages: Record<string, string> | any,
-  isNested = false,
-): HomepageTexts {
-  const getValue = (key: string) => {
-    if (isNested) {
-      return getNestedValue(messages, key);
-    }
-    return messages[key] || getNestedValue(homepageMessages, key);
-  };
-
-  return {
-    onboarding: {
-      greeting: {
-        goodMorning: getValue('onboarding.greeting.goodMorning'),
-        goodAfternoon: getValue('onboarding.greeting.goodAfternoon'),
-        goodEvening: getValue('onboarding.greeting.goodEvening'),
-      },
-      getStarted: {
-        title: getValue('onboarding.getStarted.title'),
-        description: getValue('onboarding.getStarted.description'),
-        buttonText: getValue('onboarding.getStarted.buttonText'),
-      },
-      explore: {
-        title: getValue('onboarding.explore.title'),
-        description: getValue('onboarding.explore.description'),
-        buttonText: getValue('onboarding.explore.buttonText'),
-      },
-      learn: {
-        title: getValue('onboarding.learn.title'),
-        description: getValue('onboarding.learn.description'),
-        buttonText: getValue('onboarding.learn.buttonText'),
-      },
-    },
-    quickAccess: {
-      title: getValue('quickAccess.title'),
-      fetchError: getValue('quickAccess.fetchError'),
-      error: getValue('quickAccess.error'),
-    },
-    entities: {
-      title: getValue('entities.title'),
-      description: getValue('entities.description'),
-      viewAll: (count: number) =>
-        getValue('entities.viewAll').replace('{{count}}', String(count)),
-    },
-    templates: {
-      title: getValue('templates.title'),
-      empty: getValue('templates.empty'),
-      emptyDescription: getValue('templates.emptyDescription'),
-      register: getValue('templates.register'),
-    },
-  };
+export function getTranslations(locale: string) {
+  switch (locale) {
+    case 'en':
+      return homepageMessages;
+    case 'fr':
+      return transform(homepageTranslationFr.messages);
+    case 'de':
+      return transform(homepageTranslationDe.messages);
+    case 'es':
+      return transform(homepageTranslationEs.messages);
+    case 'it':
+      return transform(homepageTranslationIt.messages);
+    default:
+      return homepageMessages;
+  }
 }
 
-const translations: Record<string, HomepageTexts> = {
-  en: transformTranslations(homepageMessages, true),
-  de: transformTranslations((homepageTranslationDe as any).messages, false),
-  fr: transformTranslations((homepageTranslationFr as any).messages, false),
-  es: transformTranslations((homepageTranslationEs as any).messages, false),
-  it: transformTranslations((homepageTranslationIt as any).messages, false),
-};
-
-export const getCurrentHomepageLanguage = (): string => {
-  const fullLanguage = getTestLanguage();
-  const shortcut = Object.entries(LANGUAGE_SHORTCUTS).find(
-    ([, lang]) => lang === fullLanguage,
-  )?.[0];
-  return shortcut || 'en';
-};
-
-export const getHomepageTranslations = (): HomepageTexts => {
-  const lang = getCurrentHomepageLanguage();
-  return translations[lang] || translations.en;
-};
+export function evaluateMessage(message: string, value: string) {
+  const matcher = /{{.+}}/;
+  if (message.match(matcher)) {
+    return message.replace(matcher, value);
+  }
+  return message;
+}
