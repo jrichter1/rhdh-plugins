@@ -161,6 +161,24 @@ jobs:
         if: ${{ hashFiles(format('workspaces/{0}/playwright.config.ts', matrix.workspace)) != '' }}
         run: yarn playwright test
 
+      - name: upload playwright test report
+        if: ${{ !cancelled() && hashFiles(format('workspaces/{0}/playwright.config.ts', matrix.workspace)) != '' }}
+        uses: actions/upload-artifact@ea165f8989834b8d358fe5c8cdc4bf9e8c2be770 # v4
+        with:
+          name: playwright-report-${{ matrix.workspace }}-node${{ matrix.node-version }}
+          path: workspaces/${{ matrix.workspace }}/e2e-test-report-*
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: upload playwright test results
+        if: ${{ !cancelled() && hashFiles(format('workspaces/{0}/playwright.config.ts', matrix.workspace)) != '' }}
+        uses: actions/upload-artifact@ea165f8989834b8d358fe5c8cdc4bf9e8c2be770 # v4
+        with:
+          name: playwright-results-${{ matrix.workspace }}-node${{ matrix.node-version }}
+          path: workspaces/${{ matrix.workspace }}/node_modules/.cache/e2e-test-results-*
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: ensure clean working directory
         run: |
           if files=$(git ls-files --exclude-standard --others --modified) && [[ -z "$files" ]]; then
