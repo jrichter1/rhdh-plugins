@@ -2,7 +2,7 @@
 
 This is a scaffolded Backstage app to test the Global header plugin.
 
-To start the app, run:
+To start the app, rusn:
 
 ```sh
 yarn install
