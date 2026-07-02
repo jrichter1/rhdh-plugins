@@ -27,6 +27,7 @@ const baseConfig = `${__dirname}/app-config.yaml`;
 
 export default defineConfig({
   timeout: 2 * 60 * 1000,
+  workers: 1,
 
   expect: {
     timeout: 5000,
@@ -43,7 +44,7 @@ export default defineConfig({
         stderr: 'pipe',
       },
 
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
 
   reporter: [
     ['html', { open: 'never', outputFolder: `e2e-test-report-${appMode}` }],

@@ -26,6 +26,7 @@ const startCommand = appMode === 'legacy' ? 'yarn start:legacy' : 'yarn start';
  */
 export default defineConfig({
   timeout: 90 * 1000,
+  workers: 1,
 
   expect: {
     timeout: 10 * 1000, // Global expect timeout
@@ -47,7 +48,7 @@ export default defineConfig({
 
   forbidOnly: !!process.env.CI,
 
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
 
   reporter: [
     ['html', { open: 'never', outputFolder: `e2e-test-report-${appMode}` }],
