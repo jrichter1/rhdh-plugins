@@ -40,6 +40,8 @@ export default defineConfig({
           port: 3000,
           reuseExistingServer: false,
           cwd: __dirname,
+          stdout: 'pipe',
+          stderr: 'pipe',
         },
       ],
 

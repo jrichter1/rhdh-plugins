@@ -37,6 +37,8 @@ export default defineConfig({
           JIRA_URL: 'https://issues.redhat.com',
           JIRA_TOKEN: 'my-jira-token',
         },
+        stdout: 'pipe',
+        stderr: 'pipe',
       },
 
   retries: process.env.CI ? 2 : 0,

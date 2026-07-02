@@ -39,6 +39,8 @@ export default defineConfig({
         port: 3000,
         reuseExistingServer: true,
         cwd: __dirname,
+        stdout: 'pipe',
+        stderr: 'pipe',
       },
 
   retries: process.env.CI ? 2 : 0,
